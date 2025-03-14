@@ -112,16 +112,18 @@ def denoise_zhuzh(
             't': t_prev if inverse else t_curr,
             'inverse': inverse,
             'inject': inject_list[i],
-            'second_order': False
+            'second_order': True,
+            'k' : "1"
         })
         
+        # ---- 四阶龙格-库塔阶段 ----
         # k1: 初始点预测
         t_vec1 = torch.full((img.shape[0],), t_curr, device=img.device, dtype=img.dtype)
         k1, current_info = model(
             img=img, img_ids=img_ids, txt=txt, txt_ids=txt_ids,
             y=vec, timesteps=t_vec1, guidance=guidance_vec, info=current_info
         )
-        
+        current_info['k'] = "2"
         # k2: 中间预测1
         img2 = img + (h/2) * k1
         t_vec2 = torch.full((img.shape[0],), t_curr + h/2, device=img.device, dtype=img.dtype)
@@ -130,7 +132,7 @@ def denoise_zhuzh(
             img=img2, img_ids=img_ids, txt=txt, txt_ids=txt_ids,
             y=vec, timesteps=t_vec2, guidance=guidance_vec, info=current_info
         )
-        
+        current_info['k'] = "3"
         # k3: 中间预测2
         img3 = img + (h/2) * k2
         t_vec3 = torch.full((img.shape[0],), t_curr + h/2, device=img.device, dtype=img.dtype)
@@ -138,7 +140,7 @@ def denoise_zhuzh(
             img=img3, img_ids=img_ids, txt=txt, txt_ids=txt_ids,
             y=vec, timesteps=t_vec3, guidance=guidance_vec, info=current_info
         )
-        
+        current_info['k'] = "4"
         # k4: 终点预测
         img4 = img + h * k3
         current_info['second_order'] = True

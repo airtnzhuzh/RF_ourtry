@@ -267,10 +267,10 @@ class SingleStreamBlock(nn.Module):
         attn_weight = torch.softmax(attn_weight, dim=-1) #1*24*1772*1772
         
         if info['inject'] and info['id'] <= info['end_layer_index'] and info['id'] >= info['start_layer_index']:
-            ci_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ci'
-            ic_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ic'
-            ii_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ii'
-            cc_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'cc'
+            ci_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ci' + '_' + info['k']
+            ic_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ic' + '_' + info['k']
+            ii_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ii' + '_' + info['k']
+            cc_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'cc' + '_' + info['k']
             if info['inverse']:
                 '''存其他token的cross_attention'''
                 editing_strategy = info['editing_strategy']
