@@ -1,35 +1,48 @@
-# Better Instruction Following
 
-
-# CUDA_VISIBLE_DEVICES=0 /home/zhuzh/.conda/envs/Fireflow/bin/python edit.py  --source_prompt "A male in a gray jacket with medium-length black hair and a large nose and deep eyebrows on a campus with clear white and yellow tiles, houses and trees in the background" \
-#                 --target_prompt "A female in a gray jacket with medium-length black hair and a large nose and deep eyebrows on a campus with clear white and yellow tiles, houses and trees in the background" \
+# CUDA_VISIBLE_DEVICES=0 python edit.py  --source_prompt "A young boy is playing with a toy airplane on the grassy front lawn of a suburban house, with a blue sky and fluffy clouds above." \
+#                 --target_prompt "A young girl is playing with a toy airplane on the grassy front lawn of a suburban house, with a blue sky and fluffy clouds above." \
 #                 --guidance 2 \
-#                 --source_img_dir 'examples/source/zyf.png' \
-#                 --num_steps 8  \
-#                 --inject 1 \
-#                 --name 'flux-dev'  \
+#                 --source_img_dir 'examples/source/boy.jpg' \
+#                 --num_steps 10 \
 #                 --offload \
+#                 --inject 1 \
 #                 --start_layer_index 0 \
 #                 --end_layer_index 37 \
 #                 --reuse_v 0 \
-                
-#                 --editing_strategy 'add_q' \
-#                 --sampling_strategy 'fireflow' \
-#                 --output_prefix 'rf_zhuzh_replace_ci_ic' \
-#                 --output_dir 'examples/edit-result/art/' 
+#                 --sampling_strategy 'rf_ourtry' \
+#                 --editing_strategy 'add_ci_ic_cc' \
+#                 --output_prefix 'ourtry_boy' \
+#                 --output_dir 'examples/edit-result/boy/' 
 
-CUDA_VISIBLE_DEVICES=0 python edit.py  --source_prompt "a vivid depiction of Poseidon, featuring rich, dynamic colors,  and a blend of realistic and abstract elements with dynamic splatter art." \
-                --target_prompt "a vivid depiction of Batman, featuring rich, dynamic colors,  and a blend of realistic and abstract elements with dynamic splatter art." \
-                --guidance 2 \
-                --source_img_dir 'examples/source/art.jpg' \
-                --num_steps 8  \
-                --inject 20 \
+
+#!/bin/bash
+
+# 定义要遍历的 num_steps 和 inject 值
+num_steps_array=(20)
+inject_array=(2)
+guidance_array=(2)
+
+# 遍历 num_steps 和 inject
+for num_steps in "${num_steps_array[@]}"; do
+    for inject in "${inject_array[@]}"; do
+        for guidance in "${guidance_array[@]}"; do
+            echo "Running with num_steps=$num_steps and inject=$inject"
+            
+            CUDA_VISIBLE_DEVICES=0 python edit.py \
+                --source_prompt "A young boy is playing with a toy airplane on the grassy front lawn of a suburban house, with a blue sky and fluffy clouds above." \
+                --target_prompt "A young girl is playing with a toy airplane on the grassy front lawn of a suburban house, with a blue sky and fluffy clouds above." \
+                --guidance "$guidance" \
+                --source_img_dir 'examples/source/boy.jpg' \
+                --num_steps "$num_steps" \
                 --offload \
+                --inject "$inject" \
                 --start_layer_index 0 \
                 --end_layer_index 37 \
-                --name 'flux-dev'  \
                 --reuse_v 0 \
-                --editing_strategy 'add_ci_ic' \
-                --sampling_strategy 'rf_zhuzh' \
-                --output_prefix 'rf_zhuzh_replace_ci_ic' \
-                --output_dir 'examples/edit-result/art/' 
+                --sampling_strategy 'rf_ourtry' \
+                --editing_strategy 'add_ci_ic_cc' \
+                --output_prefix "ourtry" \
+                --output_dir 'examples/edit-result/try/'
+        done
+    done
+done

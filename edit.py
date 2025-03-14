@@ -9,7 +9,7 @@ from einops import rearrange
 from fire import Fire
 from PIL import ExifTags, Image
 from flux.math import get_mapper, find_diff_token_ids
-from flux.sampling import denoise_midpoint, denoise_fireflow, denoise_rf_solver, denoise, get_schedule, prepare, unpack,denoise_rf_zhuzh
+from flux.sampling import denoise_midpoint, denoise_fireflow, denoise_rf_solver, denoise, get_schedule, prepare, unpack,denoise_rf_ourtry,denoise_zhuzh
 from flux.util import (configs, embed_watermark, load_ae, load_clip,
                        load_flow_model, load_t5, save_velocity_distribution)
 from transformers import pipeline
@@ -150,13 +150,16 @@ def main(
         info['reuse_v']= args.reuse_v
         info['editing_strategy']= args.editing_strategy
         info['qkv_ratio'] = list(map(float, args.qkv_ratio.split(',')))
-        info['ci_ic_ratio'] = list(map(float, args.ci_ic_ratio.split(',')))
+        info['ci_ic_ii_cc_ratio'] = list(map(float, args.ci_ic_ii_cc_ratio.split(',')))
         
         
-        
+        prefix += '_steps_' + str(num_steps)
         prefix += '_inject_' + str(inject)
-        prefix += '_start_layer_index_' + str(start_layer_index)
-        prefix += '_end_layer_index_' + str(end_layer_index)
+        prefix +=  'editing_strategy_' + args.editing_strategy
+        prefix += '_guidance_' + str(guidance)
+        # prefix += '_start_layer_index_' + str(start_layer_index)
+        # prefix += '_end_layer_index_' + str(end_layer_index)
+        
         
         if not os.path.exists(args.feature_path):
             os.mkdir(args.feature_path)
@@ -165,9 +168,9 @@ def main(
         inp_target = prepare(t5, clip, init_image, prompt=opts.target_prompt)
         # mapper = get_mapper(opts.source_prompt, opts.target_prompt, t5.tokenizer)
         # info['mapper'] = mapper
-        # inds_source, inds_target = find_diff_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
-        # info['inds_source'] = inds_source
-        # info['inds_target'] = inds_target
+        inds_source, inds_target = find_diff_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
+        info['inds_source'] = inds_source
+        info['inds_target'] = inds_target
         timesteps = get_schedule(opts.num_steps, inp["img"].shape[1], shift=(name != "flux-schnell"))
 
         # offload TEs to CPU, load model to gpu
@@ -181,7 +184,8 @@ def main(
             'rf_solver' : denoise_rf_solver,
             'fireflow' : denoise_fireflow,
             'rf_midpoint' : denoise_midpoint,
-            'rf_zhuzh' : denoise_rf_zhuzh
+            'rf_ourtry' : denoise_rf_ourtry,
+            'rf_zhuzh' : denoise_zhuzh
         }
         if args.sampling_strategy not in denoise_strategies:
             raise ExceptionType("Unknown denoising strategy")
@@ -288,7 +292,7 @@ if __name__ == "__main__":
     parser.add_argument('--editing_strategy', default='replace_v', type=str,
                         help='strategy for editing')
     parser.add_argument('--qkv_ratio', type=str, default='1.0,1.0,1.0', help='A string of comma-separated float numbers')
-    parser.add_argument('--ci_ic_ratio', type=str, default='1.0,1.0', help='A string of comma-separated float numbers')
+    parser.add_argument('--ci_ic_ii_cc_ratio', type=str, default='1.0,1.0,1.0,1.0', help='A string of comma-separated float numbers')
     parser.add_argument('--seed', type=int, default=0,
                         help='random seed')
     

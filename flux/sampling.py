@@ -197,16 +197,10 @@ def denoise_fireflow(
     guidance: float = 4.0
 ):
     
-    print(6*"=")
-    print((len(timesteps[:-1]) - info['inject_step']))
-    print(6*"=")
 
     # this is ignored for schnell
     inject_list = [True] * info['inject_step'] + [False] * (len(timesteps[:-1]) - info['inject_step'])
 
-    print(6*"=")
-    print(inject_list)
-    print(6*"=")
 
     if inverse:
         timesteps = timesteps[::-1]
@@ -318,7 +312,7 @@ def denoise_midpoint(
 
     return img, info
 
-def denoise_rf_zhuzh(
+def denoise_rf_ourtry(
     model: Flux,
     # model input
     img: Tensor,
@@ -332,8 +326,11 @@ def denoise_rf_zhuzh(
     info, 
     guidance: float = 4.0
 ):
+
+
     # this is ignored for schnell
     inject_list = [True] * info['inject_step'] + [False] * (len(timesteps[:-1]) - info['inject_step'])
+
 
     if inverse:
         timesteps = timesteps[::-1]
@@ -393,3 +390,76 @@ def unpack(x: Tensor, height: int, width: int) -> Tensor:
         ph=2,
         pw=2,
     )
+
+def denoise_zhuzh(
+    model: Flux,
+    img: Tensor,
+    img_ids: Tensor,
+    txt: Tensor,
+    txt_ids: Tensor,
+    vec: Tensor,
+    timesteps: list[float],
+    inverse,
+    info, 
+    guidance: float = 4.0
+):
+    inject_list = [True] * info['inject_step'] + [False] * (len(timesteps[:-1]) - info['inject_step'])
+
+    if inverse:
+        timesteps = timesteps[::-1]
+        inject_list = inject_list[::-1]
+    guidance_vec = torch.full((img.shape[0],), guidance, device=img.device, dtype=img.dtype)
+
+    for i, (t_curr, t_prev) in enumerate(zip(timesteps[:-1], timesteps[1:])):
+        h = t_prev - t_curr  # 步长，逆向时为负
+        
+        # 初始化当前步骤的info
+        current_info = info.copy()
+        current_info.update({
+            't': t_prev if inverse else t_curr,
+            'inverse': inverse,
+            'inject': inject_list[i],
+            'second_order': False
+        })
+        
+        # ---- 四阶龙格-库塔阶段 ----
+        # k1: 初始点预测
+        t_vec1 = torch.full((img.shape[0],), t_curr, device=img.device, dtype=img.dtype)
+        k1, current_info = model(
+            img=img, img_ids=img_ids, txt=txt, txt_ids=txt_ids,
+            y=vec, timesteps=t_vec1, guidance=guidance_vec, info=current_info
+        )
+        
+        # k2: 中间预测1
+        img2 = img + (h/2) * k1
+        t_vec2 = torch.full((img.shape[0],), t_curr + h/2, device=img.device, dtype=img.dtype)
+        
+        k2, current_info = model(
+            img=img2, img_ids=img_ids, txt=txt, txt_ids=txt_ids,
+            y=vec, timesteps=t_vec2, guidance=guidance_vec, info=current_info
+        )
+        
+        # k3: 中间预测2
+        img3 = img + (h/2) * k2
+        t_vec3 = torch.full((img.shape[0],), t_curr + h/2, device=img.device, dtype=img.dtype)
+        k3, current_info = model(
+            img=img3, img_ids=img_ids, txt=txt, txt_ids=txt_ids,
+            y=vec, timesteps=t_vec3, guidance=guidance_vec, info=current_info
+        )
+        
+        # k4: 终点预测
+        img4 = img + h * k3
+        current_info['second_order'] = True
+        t_vec4 = torch.full((img.shape[0],), t_curr + h, device=img.device, dtype=img.dtype)
+        k4, current_info = model(
+            img=img4, img_ids=img_ids, txt=txt, txt_ids=txt_ids,
+            y=vec, timesteps=t_vec4, guidance=guidance_vec, info=current_info
+        )
+        
+        # 四阶更新公式
+        img = img + (h / 6) * (k1 + 2*k2 + 2*k3 + k4)
+        
+        # 更新全局info状态
+        info = current_info
+
+    return img, info

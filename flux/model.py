@@ -51,7 +51,7 @@ class Flux(nn.Module):
         self.guidance_in = (
             MLPEmbedder(in_dim=256, hidden_dim=self.hidden_size) if params.guidance_embed else nn.Identity()
         )
-        self.txt_in = nn.Linear(params.context_in_dim, self.hidden_size)
+        self.txt_in = nn.Linear(params.context_in_dim, self.hidden_size)          
 
         self.double_blocks = nn.ModuleList(
             [

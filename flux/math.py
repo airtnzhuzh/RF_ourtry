@@ -126,59 +126,31 @@ def replace_cross_attn_ci_regions(
 
     inds_source = np.array(inds_source)
     indices_source = torch.from_numpy(inds_source).long()
-    ci_replacements =ci_replacements.mean(dim=1)  # TODO
-    if (indices_source < 0).any() or (indices_source >= ci_replacements.shape[1]).any():
+    inds_target = np.array(inds_target)
+    indices_target = torch.from_numpy(inds_target).long()
+    if (indices_source < 0).any() or (indices_source >= ci_replacements.shape[2]).any():
         raise ValueError(f"索引越界: attn形状为{ci_replacements.shape}, 有效索引范围0-{ci_replacements.shape[0]-1}")
-    ci_replacements = ci_replacements[inds_source]  
+    min_ind = indices_source[0]
+    max_ind = indices_source[-1]
     
+    # 检查indices_target和indices_source长度相同
+    if (len(indices_target) == len(indices_source)) or len(indices_target) > len(indices_source):
+        attn_weight[:, :, :min_ind, 512:] = ci_replacements[:, :, :min_ind, :]
+        attn_weight[:, :, (max_ind + 1):max_seq_len, 512:] = ci_replacements[:, :, (max_ind + 1):, :]
+    else: # len(indices_target) < len(indices_source)
+                # 计算需要复制的行数，确保 n_rows 是整数
+        n_rows = int(indices_source[-1] - indices_target[-1] - 1)
 
-    # 获取当前步骤的替换数据
-    ci_tensor = ci_replacements
-    if ci_tensor is not None:
-        # --- 处理ci区域（替换行）---
-        # 切片获取ci区域 [batch, heads, max_seq_len, -1]
-        ci_region = attn_weight[:, :, :max_seq_len, max_seq_len:]
-        batch, heads, ci_rows, ci_cols = ci_region.shape
-        
-        
-        # 检查替换索引有效性
-        inds_target = np.array(inds_target)
-        indices_target = torch.from_numpy(inds_target).long()
-        if (indices_target < 0).any() or (indices_target >= ci_rows).any():
-            raise ValueError(f"CI索引越界: 最大行数{ci_rows}，非法索引{indices_target[indices_target >= ci_rows]}")
-            
-        # 检查替换数据维度 [batch, n_indices_target, ci_cols]
-        if ci_tensor.shape != (batch, len(indices_target), ci_cols):
-            raise RuntimeError(f"CI替换数据维度不匹配,应为{(batch, len(indices_target), ci_cols)}，实际{ci_tensor.shape}")
-        
-        #如果ci_tensor行数和indices_target的数量，那么就替换
-        #如果ci_tensor行数大于indices_target的数量，那么就取平均后复制indices_target的数量
-        if len(indices_target) < ci_tensor.shape[1]:
-            ci_tensor = ci_tensor.mean(dim=1).unsqueeze(1)
-        #如果ci_tensor行数小于indices的数量，那么就剩余的indices_target数量用ci_tensor的最后一行补齐
-        if len(indices_target) > ci_tensor.shape[1]:
-            ci_tensor = torch.cat([ci_tensor, ci_tensor[-1].unsqueeze(0).repeat(len(indices_target)-ci_tensor.shape[1], 1)], dim=0)
-         
-       # 执行替换（广播到所有head）
-        ci_tensor[:, indices_target, :] = ci_region.unsqueeze(1)  # [batch, heads, n_indices, cols]
-        '''
-        Exception has occurred: IndexError
-too many indices for tensor of dimension 3
-  File "/home/zhuzh/FireFlow-Fast-Inversion-of-Rectified-Flow-for-Image-Semantic-Editing/src/flux/math.py", line 163, in replace_cross_attn_ci_regions
-    ci_tensor[:, :, indices_target, :] = ci_region.unsqueeze(1)  # [batch, heads, n_indices, cols]
-  File "/home/zhuzh/FireFlow-Fast-Inversion-of-Rectified-Flow-for-Image-Semantic-Editing/src/flux/modules/layers.py", line 355, in forward
-    attn_weight = replace_cross_attn_ci_regions(
-  File "/home/zhuzh/FireFlow-Fast-Inversion-of-Rectified-Flow-for-Image-Semantic-Editing/src/flux/model.py", line 112, in forward
-    img, info = block(img, vec=vec, pe=pe, info=info)
-  File "/home/zhuzh/FireFlow-Fast-Inversion-of-Rectified-Flow-for-Image-Semantic-Editing/src/flux/sampling.py", line 361, in denoise_rf_zhuzh
-    pred_mid, info = model(
-  File "/home/zhuzh/FireFlow-Fast-Inversion-of-Rectified-Flow-for-Image-Semantic-Editing/src/edit.py", line 197, in main
-    x, _ = denoise_strategy(model, **inp_target, timesteps=timesteps, guidance=guidance, inverse=False, info=info)
-  File "/home/zhuzh/FireFlow-Fast-Inversion-of-Rectified-Flow-for-Image-Semantic-Editing/src/edit.py", line 298, in <module>
-    main(args)
-IndexError: too many indices for tensor of dimension 3
-'''
-        attn_weight[:, :, :max_seq_len, max_seq_len:] = ci_tensor
+        # 提取源数据
+        source_data = attn_weight[:, :, indices_target[-1], 512:]
+
+        # 扩展源数据以匹配目标切片的形状
+        # 在第三个维度上添加一个维度，然后扩展到 n_rows 行
+        expanded_data = source_data.unsqueeze(2).expand(-1, -1, n_rows, -1)
+
+        # 将扩展后的数据赋值给目标切片
+        attn_weight[:, :, indices_target[-1]+1:indices_source[-1], 512:] = expanded_data
+    
 
     return attn_weight
 
@@ -191,45 +163,29 @@ def replace_cross_attn_ic_regions(
     inds_target: np.ndarray,
     inds_source: np.ndarray):
 
-
     inds_source = np.array(inds_source)
-    
-    indices_source = torch.from_numpy(inds_source).long() 
-    ic_replacements = ic_replacements.mean(dim=1)   
-    if (indices_source < 0).any() or (indices_source >= ic_replacements.shape[1]).any():
+    indices_source = torch.from_numpy(inds_source).long()
+    inds_target = np.array(inds_target)
+    indices_target = torch.from_numpy(inds_target).long()
+    if (indices_target < 0).any() or (indices_target >= ic_replacements.shape[2]).any():
         raise ValueError(f"索引越界: attn形状为{ic_replacements.shape}, 有效索引范围0-{ic_replacements.shape[0]-1}")
-    ic_replacements = ic_replacements[inds_source]  
-    
+    min_ind = indices_target[0]
+    max_ind = indices_target[-1]
 
-    # 获取当前步骤的替换数据
-    ic_tensor = ic_replacements
-    if  ic_tensor is not None:
-        # --- 处理ic区域（替换行）---
-        # 切片获取ic区域 [batch, heads, max_seq_len, -1]
-        ic_region = attn_weight[:, :, :max_seq_len, max_seq_len:]
-        batch, heads, ic_rows, ic_cols = ic_region.shape
-        
-        
-        # 检查替换索引有效性
-        inds_target = np.array(inds_target)
-        indices_target = torch.from_numpy(inds_target).long()
-        if (indices_target < 0).any() or (indices_target >= ic_rows).any():
-            raise ValueError(f"CI索引越界: 最大行数{ic_rows}，非法索引{indices_target[indices_target >= ic_rows]}")
-            
-        # 检查替换数据维度 [batch, n_indices_target, ic_cols]
-        if ic_tensor.shape != (batch, len(indices_target), ic_cols):
-            raise RuntimeError(f"CI替换数据维度不匹配,应为{(batch, len(indices_target), ic_cols)}，实际{ic_tensor.shape}")
-        
-        #如果ic_tensor行数和indices_target的数量，那么就替换
-        #如果ic_tensor行数大于indices_target的数量，那么就取平均后复制indices_target的数量
-        if len(indices_target) < ic_tensor.shape[1]:
-            ic_tensor = ic_tensor.mean(dim=1).unsqueeze(1)
-        #如果ic_tensor行数小于indices的数量，那么就剩余的indices_target数量用ci_tensor的最后一行补齐
-        if len(indices_target) > ic_tensor.shape[1]:
-            ic_tensor = torch.cat([ic_tensor, ic_tensor[-1].unsqueeze(0).repeat(len(indices_target)-ic_tensor.shape[1], 1)], dim=0)
-         
-       # 执行替换（广播到所有head）
-        ic_tensor[:, :, indices_target, :] = ic_region.unsqueeze(1)  # [batch, heads, n_indices, cols]
-        attn_weight[:, :, :max_seq_len, max_seq_len:] = ic_tensor
+    # 检查indices_target和indices_source长度相同
+    if (len(indices_target) == len(indices_source)) or len(indices_target) > len(indices_source):
+        attn_weight[:, :, max_seq_len:,:min_ind ] = ic_replacements[:, :, :, :min_ind]#1*24*4592*4592 1*24*4080*512
+        attn_weight[:, :,max_seq_len:, (max_ind + 1):max_seq_len] = ic_replacements[:, :, :, :(max_ind + 1):max_seq_len]
+    else:
+                # 计算需要复制的行数
+        n_rows = int(indices_source[-1] - indices_target[-1] - 1)
 
+        # 提取源数据
+        source_data = attn_weight[:, :, max_seq_len:, indices_target[-1]]
+
+        # 扩展源数据以匹配目标切片的形状
+        expanded_data = source_data.unsqueeze(-1).expand(-1, -1, -1, n_rows)
+
+        # 将扩展后的数据赋值给目标切片
+        attn_weight[:, :, max_seq_len:, indices_target[-1]+1:indices_source[-1]] = expanded_data
     return attn_weight
