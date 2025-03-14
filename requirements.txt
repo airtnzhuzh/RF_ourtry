@@ -1,0 +1,14 @@
+einops==0.8.1
+fire==0.7.0
+gradio==5.21.0
+huggingface_hub==0.29.1
+invisible_watermark==0.2.0
+lpips==0.1.4
+numpy==2.2.3
+Pillow==11.1.0
+Requests==2.32.3
+safetensors==0.5.3
+skimage==0.0
+torch==2.6.0
+torchvision==0.21.0
+transformers==4.49.0

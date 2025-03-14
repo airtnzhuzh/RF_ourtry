@@ -254,158 +254,103 @@ class SingleStreamBlock(nn.Module):
         q, k = self.norm(q, k, v)
 
         # Save the features in the memory
-        if False:
-            '''此处是原Fireflow代码'''
-            if info['inject'] and info['id'] <= info['end_layer_index'] and info['id'] >= info['start_layer_index']:
-                v_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'V'
-                k_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'K'
-                q_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'Q'
-                if info['inverse']:
-                    if info['reuse_v']:
-                        info['feature'][v_feature_name] = v.cpu()
-                    else:
-                        editing_strategy = info['editing_strategy']
-                        qkv_ratio = info['qkv_ratio']
-                        if 'q' in editing_strategy:
-                            info['feature'][q_feature_name] = (q * qkv_ratio[0]).cpu()
-                        if 'k' in editing_strategy:
-                            info['feature'][k_feature_name] = (k * qkv_ratio[1]).cpu()
-                        if 'v' in editing_strategy:
-                            info['feature'][v_feature_name] = (v * qkv_ratio[2]).cpu()
-                else:
-                    if info['reuse_v']:
-                        if v_feature_name in info['feature']:
-                            v = info['feature'][v_feature_name].cuda()
-                    else:
-                        editing_strategy = info['editing_strategy']
-                        if 'replace_v' in editing_strategy:
-                            if v_feature_name in info['feature']:
-                                v = info['feature'][v_feature_name].cuda()
-                        if 'add_v' in editing_strategy:
-                            if v_feature_name in info['feature']:
-                                v += info['feature'][v_feature_name].cuda()
-                        if 'replace_k' in editing_strategy:
-                            if k_feature_name in info['feature']:
-                                k = info['feature'][k_feature_name].cuda()
-                        if 'add_k' in editing_strategy:
-                            if k_feature_name in info['feature']:
-                                k += info['feature'][k_feature_name].cuda()
-                        if 'replace_q' in editing_strategy:
-                            if q_feature_name in info['feature']:
-                                q = info['feature'][q_feature_name].cuda()
-                        if 'add_q' in editing_strategy:
-                            if q_feature_name in info['feature']:
-                                q += info['feature'][q_feature_name].cuda()
-                        if 'replace_qk_cross_attn_except_tokens' in editing_strategy:
-                            if q_feature_name in info['feature']:
-                                q += info['feature'][q_feature_name].cuda()
-            # compute attention
-            attn = attention(q, k, v, pe=pe)   #1*1772*3072 
-        else:
-            '''此处是我们加的代码'''
-            '''此处qkv还没有加上位置信息RoPE'''
-            if pe is not None:
-               q,k = apply_rope(q,k,pe)
-               '''此处apply_rope是Fireflow的代码,我没有改'''
-            
-
-            scale_factor = 1 / math.sqrt(q.shape[-1])
-            attn_weight = q @ k.transpose(-2, -1) * scale_factor
-            attn_weight = torch.softmax(attn_weight, dim=-1) #1*24*1772*1772
-            
-            if info['inject'] and info['id'] <= info['end_layer_index'] and info['id'] >= info['start_layer_index']:
-                ci_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ci'
-                ic_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ic'
-                ii_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ii'
-                cc_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'cc'
-                if info['inverse']:
-                    '''存其他token的cross_attention'''
-                    editing_strategy = info['editing_strategy']
-                    ci_ic_ii_cc_ratio = info['ci_ic_ii_cc_ratio']
+        
+       
+        '''此处是我们加的代码'''
+        '''此处qkv还没有加上位置信息RoPE'''
+        if pe is not None:
+           q,k = apply_rope(q,k,pe)
+           '''此处apply_rope是Fireflow的代码,我没有改'''
+        
+        scale_factor = 1 / math.sqrt(q.shape[-1])
+        attn_weight = q @ k.transpose(-2, -1) * scale_factor
+        attn_weight = torch.softmax(attn_weight, dim=-1) #1*24*1772*1772
+        
+        if info['inject'] and info['id'] <= info['end_layer_index'] and info['id'] >= info['start_layer_index']:
+            ci_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ci'
+            ic_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ic'
+            ii_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ii'
+            cc_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'cc'
+            if info['inverse']:
+                '''存其他token的cross_attention'''
+                editing_strategy = info['editing_strategy']
+                ci_ic_ii_cc_ratio = info['ci_ic_ii_cc_ratio']
+                if 'ci' in editing_strategy:
+                    info['feature'][ci_feature_name] = (attn_weight[:, :, :512,512:] * ci_ic_ii_cc_ratio[0]).cpu()
+                if 'ic' in editing_strategy:
+                    info['feature'][ic_feature_name] = (attn_weight[:, :, 512:,:512]* ci_ic_ii_cc_ratio[1]).cpu()
+                if 'cc' in editing_strategy:
+                    info['feature'][cc_feature_name] = (attn_weight[:, :, :512,:512] * ci_ic_ii_cc_ratio[2]).cpu()
+                if 'ii' in editing_strategy:
+                    info['feature'][ii_feature_name] = (attn_weight[:, :, 512:,512:]* ci_ic_ii_cc_ratio[3]).cpu()
+        
+            else:
+                '''替换其他token的cross_attention'''
+                editing_strategy = info['editing_strategy']
+                # 替换CI和IC注意力权重（需要分别处理两个方向的cross attention）
+                if 'replace' in editing_strategy:
+                    # 替换context->image的cross attention
                     if 'ci' in editing_strategy:
-                        info['feature'][ci_feature_name] = (attn_weight[:, :, :512,512:] * ci_ic_ii_cc_ratio[0]).cpu()
+                        if ci_feature_name in info['feature']:
+                            ci_value = info['feature'][ci_feature_name].cuda()
+                            attn_weight=replace_cross_attn_ci_regions(
+                                attn_weight=attn_weight,
+                                ci_replacements=ci_value,
+                                inds_source=info['inds_source'],
+                                inds_target=info['inds_target'],
+                                max_seq_len=512)                
+                    # 替换image->context的cross attention
                     if 'ic' in editing_strategy:
-                        info['feature'][ic_feature_name] = (attn_weight[:, :, 512:,:512]* ci_ic_ii_cc_ratio[1]).cpu()
-                    if 'cc' in editing_strategy:
-                        info['feature'][cc_feature_name] = (attn_weight[:, :, :512,:512] * ci_ic_ii_cc_ratio[2]).cpu()
+                        if ic_feature_name in info['feature']:
+                            ic_value = info['feature'][ic_feature_name].cuda()
+                            ic_value_ = ic_value.transpose(2,3)
+                            attn_weight_ = attn_weight.transpose(2,3)
+                            attn_weight_=replace_cross_attn_ci_regions(
+                                attn_weight=attn_weight_,
+                                ci_replacements=ic_value_,
+                                inds_source=info['inds_source'],
+                                inds_target=info['inds_target'],
+                                max_seq_len=512)
+                            attn_weight = attn_weight_.transpose(2,3)
+                    # 替换image->image的caption 的self attention
                     if 'ii' in editing_strategy:
-                        info['feature'][ii_feature_name] = (attn_weight[:, :, 512:,512:]* ci_ic_ii_cc_ratio[3]).cpu()
-
+                        if ii_feature_name in info['feature']:
+                            ii_value = info['feature'][ii_feature_name].cuda()
+                            attn_weight[:, :, 512:, 512:] = ii_value.unsqueeze(1)
+                    # 替换context->context的image 的self attention
+                    if 'cc' in editing_strategy:
+                        if cc_feature_name in info['feature']:
+                            cc_value = info['feature'][cc_feature_name].cuda()
+                            attn_weight[:, :, :512, :512] = cc_value.unsqueeze(1)
             
-                else:
-                    '''替换其他token的cross_attention'''
-                    editing_strategy = info['editing_strategy']
-                    # 替换CI和IC注意力权重（需要分别处理两个方向的cross attention）
-                    if 'replace' in editing_strategy:
-                        # 替换context->image的cross attention
-                        if 'ci' in editing_strategy:
-                            if ci_feature_name in info['feature']:
-                                ci_value = info['feature'][ci_feature_name].cuda()
-                                attn_weight=replace_cross_attn_ci_regions(
-                                    attn_weight=attn_weight,
-                                    ci_replacements=ci_value,
-                                    inds_source=info['inds_source'],
-                                    inds_target=info['inds_target'],
-                                    max_seq_len=512)                
-                        # 替换image->context的cross attention
-                        if 'ic' in editing_strategy:
-                            if ic_feature_name in info['feature']:
-                                ic_value = info['feature'][ic_feature_name].cuda()
-                                ic_value_ = ic_value.transpose(2,3)
-                                attn_weight_ = attn_weight.transpose(2,3)
-                                attn_weight_=replace_cross_attn_ci_regions(
-                                    attn_weight=attn_weight_,
-                                    ci_replacements=ic_value_,
-                                    inds_source=info['inds_source'],
-                                    inds_target=info['inds_target'],
-                                    max_seq_len=512)
-                                attn_weight = attn_weight_.transpose(2,3)
-                        # 替换image->image的caption 的self attention
-                        if 'ii' in editing_strategy:
-                            if ii_feature_name in info['feature']:
-                                ii_value = info['feature'][ii_feature_name].cuda()
-                                attn_weight[:, :, 512:, 512:] = ii_value.unsqueeze(1)
-                        # 替换context->context的image 的self attention
-                        if 'cc' in editing_strategy:
-                            if cc_feature_name in info['feature']:
-                                cc_value = info['feature'][cc_feature_name].cuda()
-                                attn_weight[:, :, :512, :512] = cc_value.unsqueeze(1)
                 
-                    
-
-                    # 累加CI和IC注意力权重
-                    if 'add' in editing_strategy:
-                        if 'ci' in editing_strategy:
-                            if ci_feature_name in info['feature']:
-                                ci_value = info['feature'][ci_feature_name].cuda()
-                                # 扩展维度匹配头数 [batch, seq_ci, key_ci] -> [batch, num_heads, seq_ci, key_ci]
-                                attn_weight[:, :, :512, 512:] += ci_value
-                        # 替换image->context的cross attention
-                        if 'ic' in editing_strategy:
-                            if ic_feature_name in info['feature']:
-                                ic_value = info['feature'][ic_feature_name].cuda()
-                                attn_weight[:, :, 512:, :512] += ic_value
-                        # 替换image->image的caption 的self attention
-                        if 'ii' in editing_strategy:
-                            if ii_feature_name in info['feature']:
-                                ii_value = info['feature'][ii_feature_name].cuda()
-                                attn_weight[:, :, 512:, 512:] += ii_value
-                        # 替换context->context的image 的self attention
-                        if 'cc' in editing_strategy:
-                            if cc_feature_name in info['feature']:
-                                cc_value = info['feature'][cc_feature_name].cuda()
-                                attn_weight[:, :, :512,:512] += cc_value
+                # 累加CI和IC注意力权重
+                if 'add' in editing_strategy:
+                    if 'ci' in editing_strategy:
+                        if ci_feature_name in info['feature']:
+                            ci_value = info['feature'][ci_feature_name].cuda()
+                            # 扩展维度匹配头数 [batch, seq_ci, key_ci] -> [batch, num_heads, seq_ci, key_ci]
+                            attn_weight[:, :, :512, 512:] += ci_value
+                    # 替换image->context的cross attention
+                    if 'ic' in editing_strategy:
+                        if ic_feature_name in info['feature']:
+                            ic_value = info['feature'][ic_feature_name].cuda()
+                            attn_weight[:, :, 512:, :512] += ic_value
+                    # 替换image->image的caption 的self attention
+                    if 'ii' in editing_strategy:
+                        if ii_feature_name in info['feature']:
+                            ii_value = info['feature'][ii_feature_name].cuda()
+                            attn_weight[:, :, 512:, 512:] += ii_value
+                    # 替换context->context的image 的self attention
+                    if 'cc' in editing_strategy:
+                        if cc_feature_name in info['feature']:
+                            cc_value = info['feature'][cc_feature_name].cuda()
+                            attn_weight[:, :, :512,:512] += cc_value
                 
 
             '''此处应该直接输出attn'''
             attn = attn_weight @ v  # 矩阵乘法得到最终注意力输出  #1*24*1772*128
             attn = self.reshape(attn)
-
-        
-
-        
-
-
 
         # compute activation in mlp stream, cat again and run second linear layer
         output = self.linear2(torch.cat((attn, self.mlp_act(mlp)), 2))
