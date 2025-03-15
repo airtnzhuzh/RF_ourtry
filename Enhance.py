@@ -119,7 +119,7 @@ def main(
     rng = torch.Generator(device="cpu")
     opts = SamplingOptions(
         source_prompt=source_prompt,
-        target_prompt=target_prompt,
+        target_prompt=source_prompt,
         width=width,
         height=height,
         num_steps=num_steps,
@@ -147,18 +147,16 @@ def main(
         info['inject_step'] = inject
         info['start_layer_index'] = start_layer_index
         info['end_layer_index'] = end_layer_index
-
-        info['editing_strategy']= args.editing_strategy
-        info['strategy_to_propmpt'] = args.strategy_to_propmpt
-        info['ci_ic_ii_cc_ratio'] = list(map(float, args.ci_ic_ii_cc_ratio.split(',')))
+        info['enhanced_word'] = args.enhanced_word
 
 
         
         
         prefix += '_steps_' + str(num_steps)
         prefix += '_inject_' + str(inject)
-        prefix +=  'editing_strategy_' + args.editing_strategy
+        prefix +=  '_enhanced_word_' + args.enhanced_word
         prefix += '_guidance_' + str(guidance)
+
         # prefix += '_start_layer_index_' + str(start_layer_index)
         # prefix += '_end_layer_index_' + str(end_layer_index)
         
@@ -183,7 +181,6 @@ def main(
         
         
         denoise_strategy = 'rf_zhuzh'
-
         # inversion initial noise
         z, info = denoise_strategy(model, **inp, timesteps=timesteps, guidance=1, inverse=True, info=info)
         inp_target["img"] = z
@@ -251,7 +248,7 @@ def main(
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='RF-Edit')
+    parser = argparse.ArgumentParser(description='RF-Enhance')
 
     parser.add_argument('--name', default='flux-dev', type=str,
                         help='flux model')
@@ -259,8 +256,8 @@ if __name__ == "__main__":
                         help='The path of the source image')
     parser.add_argument('--source_prompt', type=str,
                         help='describe the content of the source image (or leaves it as null)')
-    parser.add_argument('--target_prompt', type=str,
-                        help='describe the requirement of editing')
+    parser.add_argument('--enhanced_word', type=str,
+                        help='the word you want to enhance ')
     parser.add_argument('--feature_path', type=str, default='feature',
                         help='the path to save the feature ')
     parser.add_argument('--guidance', type=float, default=5,
@@ -280,11 +277,9 @@ if __name__ == "__main__":
     parser.add_argument('--sampling_strategy', default='rf_zhuzh', type=str,
                         help='method used to conduct sampling at inference time')
     parser.add_argument('--offload', action='store_true', help='set it to True if the memory of GPU is not enough')
-    parser.add_argument('--editing_strategy', default='replace_ci_ic_ii_cc', type=str,
-                        help='strategy for editing')
-    parser.add_argument('--ci_ic_ii_cc_ratio', type=str, default='1.0,1.0,1.0,1.0', help='A string of comma-separated float numbers')
     parser.add_argument('--seed', type=int, default=0,
                         help='random seed')
+    
     
     args = parser.parse_args()
     
