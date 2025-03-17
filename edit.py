@@ -149,7 +149,6 @@ def main(
         info['end_layer_index'] = end_layer_index
 
         info['editing_strategy']= args.editing_strategy
-        info['strategy_to_propmpt'] = args.strategy_to_propmpt
         info['ci_ic_ii_cc_ratio'] = list(map(float, args.ci_ic_ii_cc_ratio.split(',')))
 
 
@@ -182,7 +181,7 @@ def main(
             model = model.to(torch_device)
         
         
-        denoise_strategy = 'rf_zhuzh'
+        denoise_strategy = denoise_zhuzh
 
         # inversion initial noise
         z, info = denoise_strategy(model, **inp, timesteps=timesteps, guidance=1, inverse=True, info=info)

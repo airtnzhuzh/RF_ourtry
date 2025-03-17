@@ -47,6 +47,25 @@ def find_diff_token_ids(x: str, y: str, tokenizer, max_len=512):
     
     return inds_source, inds_target
 
+
+def find_word_token_ids(prompt: str, word: str, tokenizer, max_len=512):
+    words_prompt = prompt.split(' ')
+    
+    if word not in words_prompt:
+        raise ValueError(f"Word '{word}' not found in prompt")
+    
+    # 获取需替换的单词位置
+    inds_replace = [i for i in range(len(words_prompt)) if word == words_prompt[i]]
+    
+    # 获取对应token索引（T5适配）
+    # 逐个处理索引，避免传入列表导致错误
+    inds_source = []
+    for i in inds_replace:
+        inds = get_word_inds_t5(prompt, i, tokenizer)
+        inds_source.extend(inds.tolist())  # 合并结果
+    
+    return inds_source 
+
 @staticmethod
 def get_mapper(x: str, y: str, tokenizer, max_len=512):
     """针对T5的映射矩阵生成,处理句子级对齐与子词差异"""

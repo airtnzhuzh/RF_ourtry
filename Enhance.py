@@ -8,7 +8,7 @@ import torch
 from einops import rearrange
 from fire import Fire
 from PIL import ExifTags, Image
-from flux.math import get_mapper, find_diff_token_ids
+from flux.math import get_mapper, find_diff_token_ids,find_word_token_ids
 from flux.sampling import  get_schedule, prepare, unpack,denoise_zhuzh
 from flux.util import (configs, embed_watermark, load_ae, load_clip,
                        load_flow_model, load_t5, save_velocity_distribution)
@@ -149,6 +149,9 @@ def main(
         info['end_layer_index'] = end_layer_index
         info['enhanced_word'] = args.enhanced_word
 
+        inds_word = find_word_token_ids(opts.source_prompt, args.enhanced_word, t5.tokenizer)
+        info['inds_word'] = inds_word
+
 
         
         
@@ -166,11 +169,6 @@ def main(
 
         inp = prepare(t5, clip, init_image, prompt=opts.source_prompt)
         inp_target = prepare(t5, clip, init_image, prompt=opts.target_prompt)
-        # mapper = get_mapper(opts.source_prompt, opts.target_prompt, t5.tokenizer)
-        # info['mapper'] = mapper
-        inds_source, inds_target = find_diff_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
-        info['inds_source'] = inds_source
-        info['inds_target'] = inds_target
         timesteps = get_schedule(opts.num_steps, inp["img"].shape[1], shift=(name != "flux-schnell"))
 
         # offload TEs to CPU, load model to gpu
@@ -184,6 +182,7 @@ def main(
         # inversion initial noise
         z, info = denoise_strategy(model, **inp, timesteps=timesteps, guidance=1, inverse=True, info=info)
         inp_target["img"] = z
+        
 
         timesteps = get_schedule(opts.num_steps, inp_target["img"].shape[1], shift=(name != "flux-schnell"))
 

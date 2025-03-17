@@ -349,8 +349,8 @@ class SingleStreamBlock(nn.Module):
                 
 
             '''此处应该直接输出attn'''
-            attn = attn_weight @ v  # 矩阵乘法得到最终注意力输出  #1*24*1772*128
-            attn = self.reshape(attn)
+        attn = attn_weight @ v  # 矩阵乘法得到最终注意力输出  #1*24*1772*128
+        attn = self.reshape(attn)
 
         # compute activation in mlp stream, cat again and run second linear layer
         output = self.linear2(torch.cat((attn, self.mlp_act(mlp)), 2))
