@@ -70,7 +70,6 @@ def main(
     torch.set_grad_enabled(False)
     name = args.name
     source_prompt = args.source_prompt
-    target_prompt = args.target_prompt
     guidance = args.guidance
     output_dir = args.output_dir
     num_steps = args.num_steps
@@ -147,17 +146,19 @@ def main(
         info['inject_step'] = inject
         info['start_layer_index'] = start_layer_index
         info['end_layer_index'] = end_layer_index
-        info['enhanced_word'] = args.enhanced_word
+        info['reweight_word'] = args.reweight_word
+        info['reweight_times'] = args.reweight_times
 
-        inds_word = find_word_token_ids(opts.source_prompt, args.enhanced_word, t5.tokenizer)
+        inds_word = find_word_token_ids(opts.source_prompt, args.reweight_word, t5.tokenizer)
         info['inds_word'] = inds_word
+        info['type'] = 'reweight'
 
 
         
         
         prefix += '_steps_' + str(num_steps)
         prefix += '_inject_' + str(inject)
-        prefix +=  '_enhanced_word_' + args.enhanced_word
+        prefix +=  '_reweight_word_' + args.reweight_word
         prefix += '_guidance_' + str(guidance)
 
         # prefix += '_start_layer_index_' + str(start_layer_index)
@@ -247,7 +248,7 @@ def main(
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='RF-Enhance')
+    parser = argparse.ArgumentParser(description='RF-reweight')
 
     parser.add_argument('--name', default='flux-dev', type=str,
                         help='flux model')
@@ -255,8 +256,10 @@ if __name__ == "__main__":
                         help='The path of the source image')
     parser.add_argument('--source_prompt', type=str,
                         help='describe the content of the source image (or leaves it as null)')
-    parser.add_argument('--enhanced_word', type=str,
-                        help='the word you want to enhance ')
+    parser.add_argument('--reweight_word', type=str,
+                        help='the word you want to reweight ')
+    parser.add_argument('--reweight_times', type=float, default=1,
+                        help='the times you want to reweight the word')
     parser.add_argument('--feature_path', type=str, default='feature',
                         help='the path to save the feature ')
     parser.add_argument('--guidance', type=float, default=5,

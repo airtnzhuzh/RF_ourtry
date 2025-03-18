@@ -29,7 +29,7 @@ configs = {
         repo_id=None,
         repo_flow=None,
         repo_ae=None,
-        ckpt_path="/home/zhuzh/FLUX.1-dev/flux1-dev.safetensors",
+        ckpt_path="/home/ailab/model_weights/flux/FLUX.1-dev/flux1-dev.safetensors",
         params=FluxParams(
             in_channels=64,
             vec_in_dim=768,
@@ -44,7 +44,7 @@ configs = {
             qkv_bias=True,
             guidance_embed=True,
         ),
-        ae_path="/home/zhuzh/FLUX.1-dev/ae.safetensors",
+        ae_path="/home/ailab/model_weights/flux/FLUX.1-dev/ae.safetensors",
         ae_params=AutoEncoderParams(
             resolution=256,
             in_channels=3,
@@ -134,7 +134,7 @@ def load_t5(device: str | torch.device = "cuda", max_length: int = 512) -> HFEmb
 
 
 def load_clip(device: str | torch.device = "cuda") -> HFEmbedder:
-    return HFEmbedder("/home/zhuzh/clip-vit-large-patch14-336/", max_length=77, is_clip=True, torch_dtype=torch.bfloat16).to(device)
+    return HFEmbedder("/mnt/nas_ssd_cache/434_model_weights_ssd/clip/clip-vit-large-patch14-336/", max_length=77, is_clip=True, torch_dtype=torch.bfloat16).to(device)
 
 
 def load_ae(name: str, device: str | torch.device = "cuda", hf_download: bool = True) -> AutoEncoder:

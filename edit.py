@@ -172,6 +172,7 @@ def main(
         inds_source, inds_target = find_diff_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
         info['inds_source'] = inds_source
         info['inds_target'] = inds_target
+        info['type'] = 'edit'
         timesteps = get_schedule(opts.num_steps, inp["img"].shape[1], shift=(name != "flux-schnell"))
 
         # offload TEs to CPU, load model to gpu
