@@ -346,13 +346,13 @@ class SingleStreamBlock(nn.Module):
                             if cc_feature_name in info['feature']:
                                 cc_value = info['feature'][cc_feature_name].cuda()
                                 attn_weight[:, :, :512,:512] += cc_value
-            elif info['type'] == 'reweight':
-                if info['inject'] and info['id'] <= info['end_layer_index'] and info['id'] >= info['start_layer_index']:
-                    if info['inverse'] == False:
-                        inds_word = info['inds_word']
-                        reweight_times = info['reweight_times']
-                        attn_weight[:, :, inds_word,512:] = attn_weight[:, :, inds_word,512:] * reweight_times
-                        attn_weight[:, :, 512:,inds_word] = attn_weight[:, :, 512:,inds_word] * reweight_times
+        elif info['type_s'] == 'reweight':
+            if info['inject'] and info['id'] <= info['end_layer_index'] and info['id'] >= info['start_layer_index']:
+                if info['inverse'] == False:
+                    inds_word = info['inds_word']
+                    reweight_times = info['reweight_times']
+                    attn_weight[:, :, inds_word,512:] = attn_weight[:, :, inds_word,512:] * reweight_times
+                    attn_weight[:, :, 512:,inds_word] = attn_weight[:, :, 512:,inds_word] * reweight_times
             '''此处可以继续加功能'''
 
 

@@ -151,7 +151,7 @@ def main(
 
         inds_word = find_word_token_ids(opts.source_prompt, args.reweight_word, t5.tokenizer)
         info['inds_word'] = inds_word
-        info['type'] = 'reweight'
+        info['type_s'] = 'reweight'
 
 
         
@@ -179,7 +179,7 @@ def main(
             model = model.to(torch_device)
         
         
-        denoise_strategy = 'rf_zhuzh'
+        denoise_strategy = denoise_zhuzh
         # inversion initial noise
         z, info = denoise_strategy(model, **inp, timesteps=timesteps, guidance=1, inverse=True, info=info)
         inp_target["img"] = z

@@ -2,7 +2,7 @@
 
 # 定义要遍历的 num_steps 和 inject 值
 num_steps_array=(20)
-inject_array=(4)
+inject_array=(10)
 guidance_array=(2)
 
 # 遍历 num_steps 和 inject
@@ -24,7 +24,7 @@ for num_steps in "${num_steps_array[@]}"; do
                 --reweight_word "crowded"\
                 --output_prefix "ourtry" \
                 --output_dir 'examples/edit-result/try/' \
-                --reweight_times 0.6
+                --reweight_times 0.3
         done
     done
 done
