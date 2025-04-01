@@ -265,7 +265,7 @@ class SingleStreamBlock(nn.Module):
         scale_factor = 1 / math.sqrt(q.shape[-1])
         attn_weight = q @ k.transpose(-2, -1) * scale_factor
         attn_weight = torch.softmax(attn_weight, dim=-1) #1*24*1772*1772
-        if info['type'] == 'edit':
+        if info['type_s'] == 'edit':
             if info['inject'] and info['id'] <= info['end_layer_index'] and info['id'] >= info['start_layer_index']:
                 ci_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ci' + '_' + info['k']
                 ic_feature_name = str(info['t']) + '_' + str(info['second_order']) + '_' + str(info['id']) + '_' + info['type'] + '_' + 'ic' + '_' + info['k']
@@ -298,7 +298,9 @@ class SingleStreamBlock(nn.Module):
                                     ci_replacements=ci_value,
                                     inds_source=info['inds_source'],
                                     inds_target=info['inds_target'],
-                                    max_seq_len=512)                
+                                    max_seq_len=512,
+                                    mapper=info['mapper']
+                                    )                
                         # 替换image->context的cross attention
                         if 'ic' in editing_strategy:
                             if ic_feature_name in info['feature']:
@@ -310,7 +312,8 @@ class SingleStreamBlock(nn.Module):
                                     ci_replacements=ic_value_,
                                     inds_source=info['inds_source'],
                                     inds_target=info['inds_target'],
-                                    max_seq_len=512)
+                                    max_seq_len=512,
+                                    mapper=info['mapper'])
                                 attn_weight = attn_weight_.transpose(2,3)
                         # 替换image->image的caption 的self attention
                         if 'ii' in editing_strategy:

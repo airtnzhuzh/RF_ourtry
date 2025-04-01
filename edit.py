@@ -8,7 +8,7 @@ import torch
 from einops import rearrange
 from fire import Fire
 from PIL import ExifTags, Image
-from flux.math import get_mapper, find_diff_token_ids
+from flux.math import get_mapper, find_diff_token_ids,find_same_token_ids
 from flux.sampling import  get_schedule, prepare, unpack,denoise_zhuzh
 from flux.util import (configs, embed_watermark, load_ae, load_clip,
                        load_flow_model, load_t5, save_velocity_distribution)
@@ -167,9 +167,9 @@ def main(
 
         inp = prepare(t5, clip, init_image, prompt=opts.source_prompt)
         inp_target = prepare(t5, clip, init_image, prompt=opts.target_prompt)
-        # mapper = get_mapper(opts.source_prompt, opts.target_prompt, t5.tokenizer)
-        # info['mapper'] = mapper
-        inds_source, inds_target = find_diff_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
+        mapper = get_mapper(opts.source_prompt, opts.target_prompt, t5.tokenizer)
+        info['mapper'] = mapper
+        inds_source, inds_target = find_same_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
         info['inds_source'] = inds_source
         info['inds_target'] = inds_target
         info['type_s'] = 'edit'

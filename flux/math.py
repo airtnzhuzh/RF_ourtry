@@ -47,6 +47,38 @@ def find_diff_token_ids(x: str, y: str, tokenizer, max_len=512):
     
     return inds_source, inds_target
 
+@staticmethod
+def find_same_token_ids(x: str, y: str, tokenizer, max_len=512):
+    """获得source prompt和target prompt对应的不同token id, 例如source 中的第1,2,3项,对应target中的第3,4项"""
+    """ 其实我感觉这个函数就够用了，不需要获得映射矩阵"""
+    words_x = x.split(' ')
+    words_y = y.split(' ')
+    
+    if len(words_x) != len(words_y):
+        raise ValueError(f"Prompts must have same word count. X: {len(words_x)}, Y: {len(words_y)}")
+    
+    # 获取需保留的单词位置
+    inds_remain = [i for i in range(len(words_y)) if words_y[i] == words_x[i]]
+    
+    # 获取对应token索引（T5适配）
+    inds_source = [get_word_inds_t5(x, i, tokenizer) for i in inds_remain]
+    inds_target = [get_word_inds_t5(y, i, tokenizer) for i in inds_remain]
+    
+    # Flatten the inds_source list and find the maximum index
+    flat_inds_source = [idx for sublist in inds_source for idx in sublist]
+    if flat_inds_source:
+        last_idx = max(flat_inds_source)
+        # Add all indices from last_idx+1 to max_len-1
+        additional_inds = list(range(last_idx + 1, max_len))
+        # Add these additional indices to inds_source (as separate lists)
+        for idx in additional_inds:
+            inds_source.append(np.array([idx]))
+            # For target, we'll add the same indices (or you might want to handle differently)
+            inds_target.append(np.array([idx]))
+    
+    merged_source = np.concatenate(inds_source)
+    merged_target = np.concatenate(inds_target)
+    return [merged_source], [merged_target]
 
 def find_word_token_ids(prompt: str, word: str, tokenizer, max_len=512):
     words_prompt = prompt.split(' ')
@@ -135,7 +167,7 @@ def get_word_inds_t5(text: str, word_place: int, tokenizer):
     return np.array(out)
 
 @staticmethod
-def replace_cross_attn_ci_regions(
+def replace_cross_attn_ci_regions_(
     attn_weight: torch.Tensor, 
     ci_replacements: torch.Tensor,  # 预存的ci区域替换张量 {step: tensor}
     max_seq_len: int,
@@ -173,6 +205,28 @@ def replace_cross_attn_ci_regions(
 
     return attn_weight
 
+
+@staticmethod
+def replace_cross_attn_ci_regions(
+    attn_weight: torch.Tensor, 
+    ci_replacements: torch.Tensor,  # 预存的ci区域替换张量 {step: tensor}
+    max_seq_len: int,
+    inds_target: np.ndarray,
+    inds_source: np.ndarray,
+    mapper : torch.Tensor
+    ):
+
+
+    inds_source = np.array(inds_source)
+    indices_source = torch.from_numpy(inds_source).long()
+    inds_target = np.array(inds_target)
+    indices_target = torch.from_numpy(inds_target).long()
+    
+    for i in range(max_seq_len):  # 0到511
+        if i in inds_source:
+            j = int(np.where(mapper[i] > 0)[0][0])  # 找到对应的目标索引
+            attn_weight[:, :, j, 512:] = ci_replacements[:, :, i, :]
+    return attn_weight
 
 @staticmethod
 def replace_cross_attn_ic_regions(
