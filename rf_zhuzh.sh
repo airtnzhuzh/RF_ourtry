@@ -1,9 +1,9 @@
 #!/bin/bash
 export CUDA_VISIBLE_DEVICES=1
 # 定义要遍历的 num_steps 和 inject 值
-num_steps_array=(20)
-inject_array=(2)
-guidance_array=(2)
+num_steps_array=(30)
+inject_array=(5)
+guidance_array=(3)
 
 # 遍历 num_steps 和 inject
 for num_steps in "${num_steps_array[@]}"; do
@@ -12,10 +12,10 @@ for num_steps in "${num_steps_array[@]}"; do
             echo "Running with num_steps=$num_steps and inject=$inject"
             
             CUDA_VISIBLE_DEVICES=0 python edit.py \
-                --source_prompt "A young boy is playing with a red toy airplane on the grassy front lawn of a suburban house, with a blue sky and fluffy clouds above." \
-                --target_prompt "A young girl is playing with a blue toy airplane on the grassy front lawn of a suburban house, with a blue sky and fluffy clouds above." \
+                --source_prompt "a painting of a dog in the forest" \
+                --target_prompt "a painting of the forest" \
                 --guidance "$guidance" \
-                --source_img_dir 'examples/source/boy.jpg' \
+                --source_img_dir "/mnt/nas_ssd_cache/434_datasets_ssd/PIE-Bench_v1/annotation_images/3_delete_object_80/1_artificial/4_outdoor/314000000007.jpg"\
                 --num_steps "$num_steps" \
                 --offload \
                 --inject "$inject" \
