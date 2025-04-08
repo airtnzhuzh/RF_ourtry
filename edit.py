@@ -143,6 +143,7 @@ def main(
 
         info = {}
         info['feature_path'] = args.feature_path
+        info['inject_blocks'] = args.inject_blocks
         info['feature'] = {}
         info['inject_step'] = inject
         info['start_layer_index'] = start_layer_index
@@ -173,7 +174,6 @@ def main(
         # inds_source, inds_target = find_same_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
         # info['inds_source'] = inds_source
         # info['inds_target'] = inds_target
-        info['type_s'] = 'edit'
         timesteps = get_schedule(opts.num_steps, inp["img"].shape[1], shift=(name != "flux-schnell"))
 
         # offload TEs to CPU, load model to gpu
@@ -286,6 +286,8 @@ if __name__ == "__main__":
     parser.add_argument('--ci_ic_ii_cc_ratio', type=str, default='1.0,1.0,1.0,1.0', help='A string of comma-separated float numbers')
     parser.add_argument('--seed', type=int, default=0,
                         help='random seed')
+    parser.add_argument('--inject_blocks', default='single', type=str,
+                        help='the blocks to be injected')
     
     args = parser.parse_args()
     
