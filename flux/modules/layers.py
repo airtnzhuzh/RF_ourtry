@@ -5,7 +5,7 @@ import torch
 from einops import rearrange
 from torch import Tensor, nn
 
-from flux.math import attention, rope,apply_rope,replace_cross_attn_ci_regions,replace_cross_attn_ic_regions
+from flux.math import attention, rope,apply_rope,replace_cross_attn_ci_regions
 
 import os
 
@@ -296,8 +296,7 @@ class SingleStreamBlock(nn.Module):
                                 attn_weight=replace_cross_attn_ci_regions(
                                     attn_weight=attn_weight,
                                     ci_replacements=ci_value,
-                                    inds_source=info['inds_source'],
-                                    inds_target=info['inds_target'],
+                                    alphas=info['alphas'],
                                     max_seq_len=512,
                                     mapper=info['mapper']
                                     )                
@@ -310,8 +309,7 @@ class SingleStreamBlock(nn.Module):
                                 attn_weight_=replace_cross_attn_ci_regions(
                                     attn_weight=attn_weight_,
                                     ci_replacements=ic_value_,
-                                    inds_source=info['inds_source'],
-                                    inds_target=info['inds_target'],
+                                    alphas=info['alphas'],
                                     max_seq_len=512,
                                     mapper=info['mapper'])
                                 attn_weight = attn_weight_.transpose(2,3)
@@ -381,3 +379,4 @@ class LastLayer(nn.Module):
         x = (1 + scale[:, None, :]) * self.norm_final(x) + shift[:, None, :]
         x = self.linear(x)
         return x
+    

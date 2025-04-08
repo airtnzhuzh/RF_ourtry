@@ -8,7 +8,7 @@ import torch
 from einops import rearrange
 from fire import Fire
 from PIL import ExifTags, Image
-from flux.math import get_mapper, find_diff_token_ids,find_same_token_ids
+from flux.math import get_mapper,find_same_token_ids, get_mapper_diff_num_of_words
 from flux.sampling import  get_schedule, prepare, unpack,denoise_zhuzh
 from flux.util import (configs, embed_watermark, load_ae, load_clip,
                        load_flow_model, load_t5, save_velocity_distribution)
@@ -167,11 +167,12 @@ def main(
 
         inp = prepare(t5, clip, init_image, prompt=opts.source_prompt)
         inp_target = prepare(t5, clip, init_image, prompt=opts.target_prompt)
-        mapper = get_mapper(opts.source_prompt, opts.target_prompt, t5.tokenizer)
+        mapper ,alphas = get_mapper_diff_num_of_words(opts.source_prompt, opts.target_prompt, t5.tokenizer,  max_len=256 if name == "flux-schnell" else 512)
         info['mapper'] = mapper
-        inds_source, inds_target = find_same_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
-        info['inds_source'] = inds_source
-        info['inds_target'] = inds_target
+        info['alphas'] = alphas
+        # inds_source, inds_target = find_same_token_ids(opts.source_prompt, opts.target_prompt, t5.tokenizer)
+        # info['inds_source'] = inds_source
+        # info['inds_target'] = inds_target
         info['type_s'] = 'edit'
         timesteps = get_schedule(opts.num_steps, inp["img"].shape[1], shift=(name != "flux-schnell"))
 
